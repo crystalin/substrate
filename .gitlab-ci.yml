@@ -492,13 +492,13 @@ pr-docker-build:            &pr-docker-build
 chaos-test-singlenodeheight:
   stage:                           chaos
   tags: 
-    - kubernetes-parity-build
+    - parity-chaos
   variables:
     PRODUCT:                       substrate
     DOCKERFILE:                    $PRODUCT.Dockerfile
     CONTAINER_IMAGE:               paritypr/$PRODUCT
-    KEEP_NAMESPACE:                1
-    NAMESPACE:                     substrate-ci
+    KEEP_NAMESPACE:                0
+    NAMESPACE:                     "substrate-ci-${CI_COMMIT_SHORT_SHA}"
   environment:
     name:                          parity-chaosnet
   image:                           parity/chaostools:latest
@@ -508,7 +508,9 @@ chaos-test-singlenodeheight:
     - test -z "${VERSION}" && exit 1
     - cd ./.maintain/chaostest
     - npm link
-    - chaostest singlenodeheight -i $CONTAINER_IMAGE:$VERSION
+    - chaostest spawn dev -i $CONTAINER_IMAGE:$VERSION
+    - chaostest singlenodeheight -h 30
+    - chaostest clean
 
 #### stage:                        publish
 

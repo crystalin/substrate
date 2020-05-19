@@ -1,4 +1,5 @@
 const k8s = require('@kubernetes/client-node')
+const CONFIG = require('../../config')
 
 // load k8s
 const kc = new k8s.KubeConfig()
@@ -16,12 +17,11 @@ const createNameSpace = async namespace => {
       name: namespace,
     },
   }
+  return await k8sCoreApi.createNamespace(namespaceJson)
+}
 
-  try {
-    await k8sCoreApi.readNamespace(namespace)  // if namespace is available, do not create here
-  } catch (error) {
-    await k8sCoreApi.createNamespace(namespaceJson)
-  }
+const readNameSpace = async namespace => {
+    return await k8sCoreApi.readNamespace(namespace)
 }
 
 const createService = async (port, namespace, serviceName) => {
@@ -57,6 +57,30 @@ const createService = async (port, namespace, serviceName) => {
         await k8sCoreApi.deleteNamespacedService(serviceName, namespace)
         await k8sCoreApi.createNamespacedService(namespace, service)
     }
+}
+
+const createPod = async (nodeSpec, namespace) => {
+    const {label, nodeId, image, args, ports} = nodeSpec
+    const spec = {
+        metadata: {
+          labels: {
+            app: label,
+          },
+          name: nodeId
+        },
+        spec: {
+          containers: [
+            {
+              image: image,
+              imagePullPolicy: 'Always',
+              name: nodeId,
+              ports: ports,
+              args: args
+            }
+          ]
+        }
+      }
+    return await k8sCoreApi.createNamespacedPod(namespace, spec)
 }
 
 const createDeployment = async (image, namespace, deploymentName) => {
@@ -131,8 +155,8 @@ const deleteDeployment = async (deploymentName, namespace) => {
 }
 
 const deleteNameSpace = async (namespace) => {
-    console.log('Taking down NameSpace...')
-    if (process.env.KEEP_NAMESPACE !== 0) {
+    console.log(`Taking down NameSpace ${namespace}...`)
+    if (process.env.KEEP_NAMESPACE && process.env.KEEP_NAMESPACE === 1) {
         return
     }
     return k8sCoreApi.deleteNamespace(namespace)
@@ -141,6 +165,17 @@ const deleteNameSpace = async (namespace) => {
 const getNameSpacedPods = async (namespace) => {
     const response = await k8sCoreApi.listNamespacedPod(namespace)
     return response.body.items
+}
+
+const getPod = async (nodeId, namespace) => {
+    const pods = await getNameSpacedPods(namespace)
+    const found = pods.find(
+        (pod) => !!pod.metadata && pod.metadata.name === nodeId && !!pod.status && pod.status.podIP
+      );
+    if (!found) {
+        throw Error(`getNode(${nodeId}): node is not present in the cluster`)
+    }
+    return found
 }
 
 const startForwardServer =  async (namespace, pod, port, onReady) => {
@@ -162,4 +197,6 @@ const startForwardServer =  async (namespace, pod, port, onReady) => {
 
 
 
-module.exports = {createDeployment, createNameSpace, createService, deleteDeployment, deleteService, deleteNameSpace, getDeploymentStatus, getNameSpacedPods, startForwardServer}
+
+
+module.exports = {createDeployment, createNameSpace, readNameSpace, createService, createPod, deleteDeployment, deleteService, deleteNameSpace, getDeploymentStatus, getPod, getNameSpacedPods, startForwardServer}

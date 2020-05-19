@@ -8,3 +8,4 @@
 .editorconfig
 yarn.lock
 node_modules
+/src/config/config.json

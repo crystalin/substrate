@@ -1,0 +1,1 @@
+{"namespace":"substrate-ci","image":"parity/substrate:ci-07a96363","nodes":[{"podName":"node-1","ip":"10.24.3.47","port":9933}]}

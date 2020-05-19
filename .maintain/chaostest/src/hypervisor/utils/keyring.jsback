@@ -1,0 +1,89 @@
+/**
+ * Hypervisor api: function to manage private and public keys of all nodes
+ */
+
+import createPair from '@polkadot/keyring/pair';
+import { IKeyringPair } from '@polkadot/types/types';
+import { stringToU8a } from '@polkadot/util';
+import {
+  cryptoWaitReady,
+  naclKeypairFromSeed as naclFromSeed,
+  schnorrkelKeypairFromSeed as schnorrkelFromSeed
+} from '@polkadot/util-crypto';
+import { Keypair, KeypairType } from '@polkadot/util-crypto/types';
+const {namespace} = require('../../config').loadConfig()
+
+/**
+ * @ignore
+ */
+const isSr25519 = (type) => type === 'sr25519';
+const 
+/**
+ * @ignore
+ */
+const fromSeed = (type, seed) =>
+  isSr25519(type) ? schnorrkelFromSeed(seed) : naclFromSeed(seed);
+
+/**
+ * Create a {@link Keys} interface from a seed string
+ * Note: only supports ed22519 for now
+ */
+export async function getKeysFromSeed(
+  type,
+  seed
+) {
+  await cryptoWaitReady();
+  const seedU8a = stringToU8a(seed.padEnd(32));
+  const pair = fromSeed(type, seedU8a);
+  const keyring = createPair(type, pair);
+
+  return {
+    address: keyring.address,
+    seed: seedU8a,
+    publicKey: keyring.publicKey,
+    sign: keyring.sign
+  };
+}
+
+// interface ValidatorKeys {
+//   babe: Keys;
+//   controller: Keys;
+//   gran: Keys;
+//   imon: Keys;
+//   stash: Keys;
+// }
+
+export async function getValidatorKeys(
+  validatorId,
+) {
+  return {
+    babe: await getKeysFromSeed(
+      'sr25519',
+      `${namespace}-validator${validatorId}/babe`
+    ),
+    controller: await getKeysFromSeed(
+      'sr25519',
+      `${namespace}-validator${validatorId}/controller`
+    ),
+    gran: await getKeysFromSeed(
+      'ed25519',
+      `${namespace}-validator${validatorId}/gran`
+    ),
+    imon: await getKeysFromSeed(
+      'sr25519',
+      `${namespace}-validator${validatorId}/imon`
+    ),
+    stash: await getKeysFromSeed(
+      'sr25519',
+      `${namespace}-validator${validatorId}/stash`
+    )
+  };
+}
+
+/**
+ * Get the {@link Keys} of the sudo account
+ */
+export async function getSudoKeys() {
+  // sudo key is 'chaos'
+  return getKeysFromSeed('ed25519', 'chaos');
+}
